@@ -1,0 +1,38 @@
+{
+  "url": "http://127.0.0.1:8081/",
+  "viewports": {
+    "desktop": {
+      "width": 1280,
+      "height": 800,
+      "status": 200,
+      "title": "Aegis — Legal Document Analysis",
+      "hasCanvas": false,
+      "bodyTextLen": 659,
+      "bodyTextHash": "23a1cd7e900c4840084a90f9bc5e662b6be4cfe57bc773f40ce9b6422af7a9c2",
+      "bodyTextPrefix": "AEGIS A Secure AI-Based Legal Document Retrieval and Analysis Pl",
+      "horizontalOverflow": false,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "screenshot": "/workspace/screenshots/app-builder-built.png"
+    },
+    "mobile": {
+      "width": 390,
+      "height": 844,
+      "status": 200,
+      "title": "Aegis — Legal Document Analysis",
+      "hasCanvas": false,
+      "bodyTextLen": 659,
+      "bodyTextHash": "23a1cd7e900c4840084a90f9bc5e662b6be4cfe57bc773f40ce9b6422af7a9c2",
+      "bodyTextPrefix": "AEGIS A Secure AI-Based Legal Document Retrieval and Analysis Pl",
+      "horizontalOverflow": false,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "screenshot": "/workspace/screenshots/app-builder-built-mobile.png"
+    }
+  },
+  "brandWarnings": [],
+  "authWarnings": [],
+  "verdictFile": "/workspace/screenshots/app-builder-built.json",
+  "divergesFromBaseline": false,
+  "baselineReasons": []
+}
