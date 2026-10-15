@@ -6,22 +6,30 @@ import type {
   SigningRecommendation,
 } from "./types";
 
+
 const CLAUSE_PATTERNS: Record<string, RegExp> = {
-  confidentiality: /confidential(?:ity| information| agreement)/gi,
-  indemnification: /indemnif(?:y|ication|ies|ing)/gi,
-  liability: /liability|limitation of liability|disclaimer of liability/gi,
-  termination: /terminat(?:ion|e|es|ing)/gi,
-  governing_law: /governing law|choice of law|jurisdiction|venue/gi,
-  amendment: /amend(?:ment|ing|ed)/gi,
-  dispute_resolution: /dispute resolution|arbitration|mediation/gi,
-  force_majeure: /force majeure/gi,
-  assignment: /assign(?:ment|ability|s)/gi,
-  warranty: /warrant(?:y|ies|s)/gi,
-  severability: /severability/gi,
-  non_compete: /non[- ]compet(?:e|ition)/gi,
-  intellectual_property: /intellectual property|work for hire|work made for hire/gi,
-  payment: /payment terms|invoic(?:e|ing)|compensation/gi,
+  confidentiality: /confidential(?:ity)?|non[- ]disclosure|proprietary information|trade secrets|confidential information/gi,
+  indemnification: /indemnif(?:y|ication|ies|ied)|hold harmless|defend and indemnify/gi,
+  liability: /liability|limitation of liability|disclaimer of liability|liable for|damages cap/gi,
+  termination: /terminat(?:e|ion|es|ing)|cancellation|cancel this agreement|early termination/gi,
+  governing_law: /governing law|choice of law|jurisdiction|venue|applicable law/gi,
+  amendment: /amend(?:ment|ments|ed)?|modif(?:y|ication|ications)|written consent/gi,
+  dispute_resolution: /dispute resolution|arbitration|mediation|litigation|settle disputes/gi,
+  force_majeure: /force majeure|act of god|unforeseeable circumstances|beyond reasonable control/gi,
+  assignment: /assign(?:ment|ments|ed)?|transfer of rights|successors and assigns/gi,
+  warranty: /warrant(?:y|ies|ed)|representation(?:s)? and warranties|disclaims all warranties/gi,
+  severability: /severability|severable|invalid or unenforceable provision/gi,
+  non_compete: /non[- ]compete|non[- ]competition|restrictive covenant|competing business/gi,
+  intellectual_property: /intellectual property|work for hire|work made for hire|copyright|trademark|patent rights|ownership of inventions/gi,
+  payment: /payment terms|invoice|invoic(?:e|ing)|compensation|fees payable|late payment|overdue payment/gi,
+  data_protection: /data protection|personal data|personal information|privacy policy|data privacy|data processing/gi,
+  data_security: /data security|security breach|data breach|unauthorized access|security measures/gi,
+  renewal: /automatic renewal|auto[- ]renewal|renew(?:al|s|ed)|extension of this agreement/gi,
+  notice: /written notice|notice period|days['’]? notice|prior notice|notice of termination/gi,
+  audit_rights: /audit rights|right to audit|inspection rights|audit records/gi,
+  subcontracting: /subcontract(?:or|ing|ors)?|third[- ]party service provider|subcontracted services/gi,
 };
+
 
 const RISK_PATTERNS: {
   type: string;
