@@ -104,24 +104,53 @@ export function isMainModule(moduleUrl) {
   }
 }
 
+
+function loadLocalEnv(root) {
+  // Node's dotenv parser handles quoted values and comments. Existing shell /
+  // deployment variables retain precedence over values in .env.
+  try {
+    process.loadEnvFile(join(root, ".env"));
+  } catch (error) {
+    if (error?.code !== "ENOENT") throw error;
+  }
+}
+
 function main(argv) {
   const [command, ...args] = argv;
   if (!command) {
-    console.error("usage: node scripts/with-app-env.mjs <command> [args…]");
-    process.exit(2);
+    console.error("Usage: node scripts/with-app-env.mjs <command> [...args]");
+    process.exitCode = 1;
+    return;
   }
-  const env = mergeAppEnv(readAppEnv(projectRoot()), process.env);
-  const child = spawn(command, args, { stdio: "inherit", env });
-  // The dev server is long-running and is stopped by signalling this wrapper.
-  for (const signal of ["SIGINT", "SIGTERM", "SIGHUP"]) {
-    process.on(signal, () => child.kill(signal));
-  }
-  child.on("error", (err) => {
-    console.error(`[with-app-env] failed to run ${command}:`, err?.message || err);
-    process.exit(127);
+
+  const root = projectRoot();
+  loadLocalEnv(root);
+  const env = mergeAppEnv(readAppEnv(root), process.env);
+
+  // Vite's Windows shim is a .cmd file, so invoke its JS entrypoint with Node.
+  // Keep the wrapper generic for tests and other direct commands (node -e, etc.).
+  const useViteJs = process.platform === "win32" && command === "vite";
+  const executable = useViteJs ? process.execPath : command;
+  const childArgs = useViteJs
+    ? [join(root, "node_modules", "vite", "bin", "vite.js"), ...args]
+    : args;
+
+  const child = spawn(executable, childArgs, {
+    stdio: "inherit",
+    env,
   });
+
+  child.on("error", (error) => {
+    console.error(`[with-app-env] failed to run ${command}:`, error.message);
+    process.exitCode = 1;
+  });
+
   child.on("exit", (code, signal) => {
-    process.exit(exitStatusFromChild(code, signal));
+    if (signal) {
+      process.kill(process.pid, signal);
+    } else {
+      process.exitCode = code ?? 1;
+    }
   });
 }
 

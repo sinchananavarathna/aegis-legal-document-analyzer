@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Clock,
+  Download,
   FileText,
   Loader2,
   MessageSquare,
@@ -29,11 +30,33 @@ import {
   saveAnalysis,
   listAnalyses,
   loadAnalysis,
+  loadOriginalFile,
   deleteAnalysis,
+  type OriginalFilePayload,
+  type SavedAnalysisSummary,
 } from "@/lib/persistence";
 import { useAiCooldown } from "@/lib/hooks/ai-cooldown";
 
 type ChatTurn = { role: "user" | "assistant"; content: string };
+
+const MAX_SAVED_FILE_BYTES = 5 * 1024 * 1024;
+
+async function fileToPayload(file: File): Promise<OriginalFilePayload> {
+  if (file.size > MAX_SAVED_FILE_BYTES) {
+    throw new Error("Files larger than 5 MB can be analyzed, but cannot be saved with the original file attached.");
+  }
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  let binary = "";
+  const chunkSize = 0x8000;
+  for (let offset = 0; offset < bytes.length; offset += chunkSize) {
+    binary += String.fromCharCode(...bytes.subarray(offset, offset + chunkSize));
+  }
+  return {
+    fileName: file.name,
+    mimeType: file.type || "application/octet-stream",
+    base64: btoa(binary),
+  };
+}
 
 const VERDICT_STYLE: Record<ClauseVerdict["verdict"], { label: string; className: string }> = {
   confirmed: { label: "Confirmed", className: "text-danger" },
@@ -67,11 +90,10 @@ export function AnalyzePanel({
   const [aiFindings, setAiFindings] = useState<AiFinding[] | null>(null);
   const [reviewBusy, setReviewBusy] = useState(false);
   const [reviewError, setReviewError] = useState<string | null>(null);
-  const [savedAnalyses, setSavedAnalyses] = useState<
-    { id: string; fileName: string; savedAt: number; score: number }[]
-  >([]);
+  const [savedAnalyses, setSavedAnalyses] = useState<SavedAnalysisSummary[]>([]);
   const [showHistory, setShowHistory] = useState(false);
   const [saveBusy, setSaveBusy] = useState(false);
+  const [originalFile, setOriginalFile] = useState<File | null>(null);
   const reviewCooldown = useAiCooldown();
   const sumCooldown = useAiCooldown();
 
@@ -105,6 +127,7 @@ export function AnalyzePanel({
       const extracted = await extractFileText(file);
       setText(extracted);
       setFileName(file.name);
+      setOriginalFile(file);
       setResult(analyzeText(extracted, file.name));
       onDocumentLoaded?.(extracted, file.name);
       setAiSummary(null);
@@ -122,6 +145,7 @@ export function AnalyzePanel({
 
   function runAnalysis(source: string, name: string) {
     setError(null);
+    setOriginalFile(null);
     setFileName(name);
     setText(source);
     setResult(analyzeText(source, name));
@@ -216,8 +240,13 @@ export function AnalyzePanel({
   }
 
   const refreshHistory = useCallback(async () => {
-    const list = await listAnalyses();
-    setSavedAnalyses(list);
+    try {
+      const list = await listAnalyses();
+      setSavedAnalyses(list);
+    } catch {
+      // A visitor who has not signed in has no personal history to display yet.
+      setSavedAnalyses([]);
+    }
   }, []);
 
   useEffect(() => {
@@ -227,9 +256,26 @@ export function AnalyzePanel({
   async function onSave() {
     if (!result) return;
     setSaveBusy(true);
+    setError(null);
     try {
-      await saveAnalysis(result);
+      const matchingFile = originalFile && originalFile.name === result.fileName
+        ? originalFile
+        : null;
+      const payload = matchingFile && matchingFile.size <= MAX_SAVED_FILE_BYTES
+        ? await fileToPayload(matchingFile)
+        : undefined;
+      await saveAnalysis(result, payload);
       await refreshHistory();
+      if (matchingFile && matchingFile.size > MAX_SAVED_FILE_BYTES) {
+        setError("Analysis saved. The original file exceeded 5 MB, so only its extracted text and results were saved.");
+      }
+    } catch (e) {
+      const message = e instanceof Error ? e.message : "";
+      setError(
+        message === "Unauthorized"
+          ? "Sign in or create an account before saving your document."
+          : message || "Could not save this analysis. Please try again.",
+      );
     } finally {
       setSaveBusy(false);
     }
@@ -238,6 +284,7 @@ export function AnalyzePanel({
   async function onLoadSaved(id: string) {
     const loaded = await loadAnalysis(id);
     if (loaded) {
+      setOriginalFile(null);
       setResult(loaded);
       setText(loaded.cleanedText);
       setFileName(loaded.fileName);
@@ -253,8 +300,33 @@ export function AnalyzePanel({
   }
 
   async function onDeleteSaved(id: string) {
-    await deleteAnalysis(id);
-    await refreshHistory();
+    try {
+      await deleteAnalysis(id);
+      await refreshHistory();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not delete this saved analysis.");
+    }
+  }
+
+  async function onDownloadOriginal(id: string) {
+    try {
+      const payload = await loadOriginalFile(id);
+      if (!payload) {
+        setError("No original file was attached to this saved analysis.");
+        return;
+      }
+      const binary = atob(payload.base64);
+      const bytes = new Uint8Array(binary.length);
+      for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i);
+      const url = URL.createObjectURL(new Blob([bytes], { type: payload.mimeType }));
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = payload.fileName;
+      anchor.click();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not download the original file.");
+    }
   }
 
   return (
@@ -400,12 +472,25 @@ export function AnalyzePanel({
                                   {s.score}/100 · {new Date(s.savedAt).toLocaleDateString()}
                                 </span>
                               </button>
+                              {s.hasOriginalFile ? (
+                                <button
+                                  type="button"
+                                  title="Download original file"
+                                  aria-label={`Download original file ${s.fileName}`}
+                                  className="text-muted transition hover:text-fg"
+                                  onClick={() => void onDownloadOriginal(s.id)}
+                                >
+                                  <Download className="size-3.5" />
+                                </button>
+                              ) : null}
                               <button
                                 type="button"
-                                className="opacity-0 group-hover:opacity-100 transition-opacity"
+                                title="Delete saved analysis"
+                                aria-label={`Delete saved analysis ${s.fileName}`}
+                                className="text-muted transition hover:text-danger"
                                 onClick={() => void onDeleteSaved(s.id)}
                               >
-                                <Trash2 className="size-3.5 text-danger" />
+                                <Trash2 className="size-3.5" />
                               </button>
                             </li>
                           ))}

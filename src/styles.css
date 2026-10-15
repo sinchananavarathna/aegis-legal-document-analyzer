@@ -73,3 +73,112 @@
     transition-duration: 0.01ms !important;
   }
 }
+
+
+/* Aegis dashboard visual polish */
+.aegis-page {
+  position: relative;
+  isolation: isolate;
+}
+
+.aegis-orb {
+  position: absolute;
+  z-index: -1;
+  pointer-events: none;
+  width: 24rem;
+  height: 24rem;
+  border-radius: 9999px;
+  filter: blur(100px);
+  opacity: 0.09;
+}
+
+.aegis-orb-one {
+  top: 12rem;
+  left: -15rem;
+  background: #9aa89e;
+}
+
+.aegis-orb-two {
+  top: 38rem;
+  right: -16rem;
+  background: #829c8a;
+}
+
+.aegis-panel {
+  animation: aegis-rise-in 500ms ease-out both;
+}
+
+.aegis-modal {
+  animation: aegis-modal-in 220ms ease-out both;
+}
+
+.aegis-float {
+  animation: aegis-float 5s ease-in-out infinite;
+}
+
+.aegis-float-delayed {
+  animation: aegis-float 5.5s ease-in-out 1s infinite;
+}
+
+.aegis-spin {
+  animation: aegis-spin 35s linear infinite;
+}
+
+@keyframes aegis-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+
+  50% {
+    transform: translateY(-9px);
+  }
+}
+
+@keyframes aegis-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes aegis-rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes aegis-modal-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.985);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@media (max-width: 640px) {
+  .aegis-orb {
+    width: 15rem;
+    height: 15rem;
+    filter: blur(70px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .aegis-float,
+  .aegis-float-delayed,
+  .aegis-spin,
+  .aegis-panel,
+  .aegis-modal {
+    animation: none !important;
+  }
+}
